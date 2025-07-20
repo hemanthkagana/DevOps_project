@@ -1,0 +1,29 @@
+# backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: todo-app
+spec:
+  selector:
+    app: backend # Selects pods with this label
+  ports:
+    - protocol: TCP
+      port: 80 # Service listens on port 80
+      targetPort: 5000 # Forwards to container port 5000
+  type: ClusterIP # Internal to the cluster, use LoadBalancer for external access
+
+# frontend-service.yaml - use type: LoadBalancer for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: todo-app
+spec:
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer # Exposes the frontend externally
