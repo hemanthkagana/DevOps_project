@@ -1,65 +1,75 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 
 app = Flask(__name__)
+CORS(app)
 
-database_url = os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/mydatabase')
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+# Database configuration
+DB_HOST = os.getenv('DB_HOST', 'postgres-service')
+DB_NAME = os.getenv('DB_NAME', 'todos')
+DB_USER = os.getenv('DB_USER', 'postgres')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
 
-class Task(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String(200), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
+def get_db_connection():
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        cursor_factory=RealDictCursor
+    )
+    return conn
 
-    def __repr__(self):
-        return f'<Task {self.id}: {self.description}>'
+@app.route('/todos', methods=['GET'])
+def get_todos():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM todos;')
+    todos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(todos)
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'description': self.description,
-            'completed': self.completed
-        }
+@app.route('/todos', methods=['POST'])
+def add_todo():
+    todo_data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO todos (text, completed) VALUES (%s, %s) RETURNING *;',
+        (todo_data['text'], todo_data.get('completed', False))
+    new_todo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(new_todo), 201
 
-@app.before_request
-def create_tables():
-    db.create_all()
+@app.route('/todos/<int:todo_id>', methods=['PUT'])
+def update_todo(todo_id):
+    todo_data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'UPDATE todos SET text = %s, completed = %s WHERE id = %s RETURNING *;',
+        (todo_data['text'], todo_data['completed'], todo_id))
+    updated_todo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(updated_todo)
 
-@app.route('/api/tasks', methods=['GET'])
-def get_tasks():
-    tasks = Task.query.all()
-    return jsonify([task.to_dict() for task in tasks])
-
-@app.route('/api/tasks', methods=['POST'])
-def add_task():
-    data = request.get_json()
-    new_task = Task(description=data['description'], completed=data.get('completed', False))
-    db.session.add(new_task)
-    db.session.commit()
-    return jsonify(new_task.to_dict()), 201
-
-@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
-def update_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    data = request.get_json()
-    if 'description' in data:
-        task.description = data['description']
-    if 'completed' in data:
-        task.completed = data['completed']
-    db.session.commit()
-    return jsonify(task.to_dict())
-
-@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task(task_id):
-    task = Task.query.get_or_404(task_id)
-    db.session.delete(task)
-    db.session.commit()
-    return jsonify({'message': 'Task deleted'}), 204
+@app.route('/todos/<int:todo_id>', methods=['DELETE'])
+def delete_todo(todo_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM todos WHERE id = %s;', (todo_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'message': 'Todo deleted successfully'}), 200
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(host='0.0.0.0', port=5000)

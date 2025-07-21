@@ -1,26 +1,35 @@
 version: '3.8'
+
 services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: todos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
   backend:
     build: ./backend
     ports:
       - "5000:5000"
     environment:
-      DATABASE_URL: postgresql://user:password@db:5432/mydatabase # db is the service name for postgres
+      DB_HOST: postgres
+      DB_NAME: todos
+      DB_USER: postgres
+      DB_PASSWORD: password
     depends_on:
-      - db
+      - postgres
+
   frontend:
     build: ./frontend
     ports:
       - "80:80"
     depends_on:
       - backend
-  db:
-    image: postgres:13
-    environment:
-      POSTGRES_DB: mydatabase
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    volumes:
-      - db_data:/var/lib/postgresql/data
+
 volumes:
-  db_data:
+  postgres_data:

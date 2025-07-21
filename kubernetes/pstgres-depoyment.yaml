@@ -1,27 +1,33 @@
-# backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-deployment
+  name: postgres-deployment
   namespace: todo-app
-  labels:
-    app: backend
 spec:
-  replicas: 2 # You can scale this
+  replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: postgres
   template:
     metadata:
       labels:
-        app: backend
+        app: postgres
     spec:
       containers:
-      - name: backend
-        image: <backend-image-placeholder> # Placeholder for CI/CD to replace
-        ports:
-        - containerPort: 5000
+      - name: postgres
+        image: postgres:13
         env:
-        - name: DATABASE_URL
-          value: postgresql://user:password@postgres-service:5432/mydatabase # Connect to K8s service
-      # Add volume mounts for persistent data for Postgres, and secrets for sensitive data
+        - name: POSTGRES_DB
+          value: "todos"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "password"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}

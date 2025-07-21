@@ -1,27 +1,20 @@
-# backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-deployment
+  name: frontend-deployment
   namespace: todo-app
-  labels:
-    app: backend
 spec:
-  replicas: 2 # You can scale this
+  replicas: 2
   selector:
     matchLabels:
-      app: backend
+      app: frontend
   template:
     metadata:
       labels:
-        app: backend
+        app: frontend
     spec:
       containers:
-      - name: backend
-        image: <backend-image-placeholder> # Placeholder for CI/CD to replace
+      - name: frontend
+        image: your-dockerhub-username/todo-frontend:latest
         ports:
-        - containerPort: 5000
-        env:
-        - name: DATABASE_URL
-          value: postgresql://user:password@postgres-service:5432/mydatabase # Connect to K8s service
-      # Add volume mounts for persistent data for Postgres, and secrets for sensitive data
+        - containerPort: 80
