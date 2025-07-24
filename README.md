@@ -31,4 +31,3 @@ The application consists of:
 * **Frontend:** HTML5, CSS3, JavaScript
 * **Database:** PostgreSQL
 
-## Project Structure
