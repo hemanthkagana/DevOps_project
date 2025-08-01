@@ -1,0 +1,56 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'kubernetes/**'
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build and push backend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        push: true
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/todo-backend:latest
+        secrets: |
+          "username=${{ secrets.DOCKER_HUB_USERNAME }}"
+          "password=${{ secrets.DOCKER_HUB_TOKEN }}"
+
+    - name: Build and push frontend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        push: true
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/todo-frontend:latest
+        secrets: |
+          "username=${{ secrets.DOCKER_HUB_USERNAME }}"
+          "password=${{ secrets.DOCKER_HUB_TOKEN }}"
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: azure/setup-kubectl@v3
+    - run: |
+        echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig.yaml
+        export KUBECONFIG=kubeconfig.yaml
+        
+        # Apply Kubernetes manifests in order
+        kubectl apply -f kubernetes/1-namespace/namespace.yaml
+        kubectl apply -f kubernetes/2-database/
+        kubectl apply -f kubernetes/3-backend/
+        kubectl apply -f kubernetes/4-frontend/
+        kubectl apply -f kubernetes/5-networking/
+        
+        # Verify deployment
+        kubectl rollout status deployment/frontend-deployment -n todo-app
+        kubectl rollout status deployment/backend-deployment -n todo-app

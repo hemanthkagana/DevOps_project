@@ -1,8 +1,3 @@
-# Node
-node_modules/
-dist/
-npm-debug.log*
-
 # Python
 __pycache__/
 *.pyc
@@ -10,16 +5,18 @@ __pycache__/
 *.pyd
 .Python
 env/
-venv/
-.venv/
+
+# Node
+node_modules/
+npm-debug.log*
 
 # Docker
+*.swp
 .env
-docker-compose.override.yml
+
+# Kubernetes
+kubeconfig.yaml
 
 # IDE
 .vscode/
 .idea/
-
-# Kubernetes
-kubeconfig.yaml
